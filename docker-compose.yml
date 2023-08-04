@@ -1,82 +1,48 @@
-version: "3.5"  # Versão da sintaxe do arquivo docker-compose.
+version: "3.5"
 
 services:
-  # Configuração do serviço "db", que é um banco de dados MongoDB.
   db:
-    # Define o nome do container para o banco de dados.
     container_name: node_mongo_db
-    # Usa a imagem oficial do MongoDB do Docker Hub.
     image: mongo
-    # Define a política de reinicialização do container como "always".
     restart: always
-    # Define as variáveis de ambiente para o container do banco de dados.
     environment:
-    # Define o nome de usuário do MongoDB (root).
       MONGO_INITDB_ROOT_USERNAME: root
-    # Define a senha do usuário do MongoDB.
       MONGO_INITDB_ROOT_PASSWORD: mongo
-    # Define a mapeamento de portas entre o host e o container do MongoDB.
     ports:
-    # Mapeia a porta 27017 do host para a porta 27017 do container.
       - "27017:27017"
-    # Health check para o serviço "db":
     healthcheck:
-      # O health check usa o comando abaixo para verificar a saúde do MongoDB.
       test: "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"
-      # Ele será executado a cada 30 segundos ("interval: 30s") com um tempo limite de 10 segundos ("timeout: 10s")
       interval: 30s
       timeout: 10s
-      # e até três tentativas ('retries: 3') antes de considerar o serviço não saudável.
       retries: 3
-      # O tempo de espera para o health check em segundos.
       start_period: 40s
 
-  # Configuração do serviço "backend", que é o servidor Node.js do aplicativo backend.
   backend:
     container_name: node_mongo_backend
-    # Usa o arquivo Dockerfile para construir o container.
     build:
       context: .
       dockerfile: Dockerfile
-    # Nome da imagem do container.
     image: node_mongo
-    # Define o usuário do container como "node".
     user: "node"
-    # Define as variáveis de ambiente para o container do servidor Node.js.
     environment:
-    # Define o ambiente de execução como "development".
       NODE_ENV: development
-    # Define o nome de usuário do MongoDB usado pelo servidor Node.js.
       DB_USER: root
-    # Define a senha do usuário do MongoDB usado pelo servidor Node.js.
       DB_PASSWORD: mongo
-    # Define o host do banco de dados, que é o serviço "db".
       DB_HOST: db
-    # Define a porta do banco de dados que o servidor Node.js usará.
       DB_PORT: 27017
-    # Define o nome do banco de dados que o servidor Node.js usará.
       DB_NAME: node_mongo
-    # Define o mapeamento de volumes entre o host e o container do servidor Node.js.
     volumes:
-    # Mapeia a pasta "./" do host para "/app" no container.
       - ./:/app
-    # Define o comando a ser executado quando o container é iniciado.
     command: "npm run dev"
-    # Aloca um pseudo-TTY para interagir com o console do container.
     tty: true
-    # Mantém o stdin aberto, permitindo a entrada interativa no container.
     stdin_open: true
     restart: always
-    # Define a dependência do serviço "backend" em relação ao serviço "db".
     depends_on:
-    # O servidor Node.js só iniciará após o banco de dados estar pronto e saudável.
       db:
         condition: service_healthy
     ports:
       - "8081:8081"
     healthcheck:
-      # O health check usa o comando "curl" para chamar o endpoint "/health" no serviço Node.js.
-      # O endpoint "/health" responde com um código de status 200 e uma mensagem "Healthy" quando acessado.
       test: ["CMD", "curl", "--fail", "http://localhost:8081/health"]
       interval: 30s
       timeout: 10s
